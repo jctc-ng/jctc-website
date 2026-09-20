@@ -87,33 +87,247 @@ function setupUI(){
   document.querySelectorAll(".frame-choice").forEach(a=>a.onclick=()=>setTimeout(()=>{document.getElementById("frameType").value=a.dataset.frame;drawFrame()},40));
 }
 
-function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src})}
-const canvas=document.getElementById("frameCanvas"),ctx=canvas?.getContext("2d");let userPhoto=null,logoImage=null;
-function rr(c,x,y,w,h,r,fill,stroke){c.beginPath();c.roundRect(x,y,w,h,r);if(fill){c.fillStyle=fill;c.fill()}if(stroke){c.strokeStyle=stroke;c.lineWidth=4;c.stroke()}}
-function setCanvasSize(){const s=document.getElementById("exportSize").value,d={square:[1080,1080],portrait:[1080,1350],story:[1080,1920]}[s];canvas.width=d[0];canvas.height=d[1]}
-function fitPhoto(c,img,x,y,w,h,z,ox,oy){const ir=img.width/img.height,tr=w/h;let dw,dh;if(ir>tr){dh=h*z;dw=dh*ir}else{dw=w*z;dh=dw/ir}c.drawImage(img,x+(w-dw)/2+ox*(w/220),y+(h-dh)/2+oy*(h/220),dw,dh)}
-function wrapText(c,text,x,y,maxW,lineH,maxLines=4){const words=text.split(/\s+/);let line="",lines=[];words.forEach(word=>{const test=line?line+" "+word:word;if(c.measureText(test).width>maxW&&line){lines.push(line);line=word}else line=test});if(line)lines.push(line);lines.slice(0,maxLines).forEach((l,i)=>c.fillText(l,x,y+i*lineH))}
-function drawFrame(){
-  if(!ctx)return;setCanvasSize();const W=canvas.width,H=canvas.height,margin=W*.07,photoY=H*.16,photoH=H*.52;
-  ctx.fillStyle="#f8faf8";ctx.fillRect(0,0,W,H);ctx.fillStyle="#075c34";ctx.fillRect(0,0,W,Math.max(24,H*.022));ctx.fillStyle="#d61f26";ctx.fillRect(0,H-Math.max(28,H*.026),W,Math.max(28,H*.026));
-  rr(ctx,margin,photoY,W-2*margin,photoH,38,"#e7eee9","#075c34");ctx.save();ctx.beginPath();ctx.roundRect(margin,photoY,W-2*margin,photoH,38);ctx.clip();
-  if(userPhoto)fitPhoto(ctx,userPhoto,margin,photoY,W-2*margin,photoH,parseFloat(photoZoom.value),parseFloat(photoX.value),parseFloat(photoY.value));
-  else{ctx.fillStyle="#e9f0ec";ctx.fillRect(margin,photoY,W-2*margin,photoH);ctx.fillStyle="#6d7d74";ctx.font=`700 ${Math.round(W*.035)}px Arial`;ctx.textAlign="center";ctx.fillText("Upload your photograph",W/2,photoY+photoH/2)}ctx.restore();
-  if(logoImage){const lw=W*.18;ctx.fillStyle="#fff";ctx.fillRect(W/2-lw/2,30,lw,lw);ctx.drawImage(logoImage,W/2-lw/2,30,lw,lw)}
-  const labels={day1:["I'M JOINING","THE JCTC CYBERCRIME AWARENESS WALK","20 OCTOBER 2026 • 7:30 AM"],day2:["I WILL ATTEND","THE JCTC NATIONAL CONSULTATION ON CYBERCRIME","21 OCTOBER 2026 • 8:00 AM"],support:["I SUPPORT","#SAYNOTOCYBERCRIME","DON'T FALL VICTIM. DON'T PERPETRATE."]}[frameType.value];
-  const bandY=photoY+photoH-H*.055;ctx.fillStyle="rgba(3,88,48,.94)";ctx.fillRect(margin,bandY,W-2*margin,H*.12);ctx.textAlign="center";ctx.fillStyle="#fff";ctx.font=`900 ${Math.round(W*.05)}px Arial`;ctx.fillText(labels[0],W/2,bandY+H*.04);ctx.font=`800 ${Math.round(W*.031)}px Arial`;wrapText(ctx,labels[1],W/2,bandY+H*.077,W*.78,H*.034,2);ctx.fillStyle="#ffe7a2";ctx.font=`700 ${Math.round(W*.022)}px Arial`;ctx.fillText(labels[2],W/2,bandY+H*.108);
-  ctx.textAlign="left";if(participantName.value.trim()){ctx.fillStyle="#0a1110";ctx.font=`900 ${Math.round(W*.036)}px Arial`;ctx.fillText(participantName.value.trim(),margin,H*.84)}if(participantOrg.value.trim()){ctx.fillStyle="#526159";ctx.font=`600 ${Math.round(W*.023)}px Arial`;wrapText(ctx,participantOrg.value.trim(),margin,H*.875,W*.8,H*.03,2)}
-  ctx.fillStyle="#075c34";ctx.font=`900 ${Math.round(W*.025)}px Arial`;ctx.fillText("JOINT CASE TEAM ON CYBERCRIMES (JCTC)",margin,H*.94);ctx.fillStyle="#d61f26";ctx.font=`800 ${Math.round(W*.023)}px Arial`;ctx.fillText("SAY NO TO CYBERCRIME",margin,H*.974);
-}
-async function initFrame(){if(!canvas)return;logoImage=await loadImg("assets/jctc-logo.jpg");drawFrame()}
-function setupFrame(){
-  photoInput.onchange=e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>{const im=new Image();im.onload=()=>{userPhoto=im;drawFrame()};im.src=ev.target.result};r.readAsDataURL(f)};
-  ["frameType","participantName","participantOrg","photoZoom","photoX","photoY","exportSize"].forEach(id=>{document.getElementById(id).addEventListener("input",drawFrame);document.getElementById(id).addEventListener("change",drawFrame)});
-  downloadFrame.onclick=()=>{drawFrame();const a=document.createElement("a");a.download=`JCTC-${frameType.value}-campaign-frame.png`;a.href=canvas.toDataURL("image/png");a.click();frameStatus.textContent="Your campaign frame has been generated for download.";jctcTrack("frame_download")};
-  shareFrame.onclick=()=>{drawFrame();canvas.toBlob(async blob=>{const file=new File([blob],"JCTC-campaign-frame.png",{type:"image/png"});if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({title:"JCTC Cybercrime Awareness Campaign",text:CAMPAIGN_CAPTION,files:[file]});jctcTrack("frame_share")}catch(e){}}else shareText(CAMPAIGN_CAPTION)},"image/png")};
-  copyCaption.onclick=async()=>{await navigator.clipboard?.writeText(CAMPAIGN_CAPTION);frameStatus.textContent="Campaign caption copied."};
+function loadImg(src){
+  return new Promise((resolve,reject)=>{
+    const i=new Image();
+    i.onload=()=>resolve(i);
+    i.onerror=reject;
+    i.src=src;
+  });
 }
 
+const canvas=document.getElementById("frameCanvas");
+const ctx=canvas?.getContext("2d");
+const photoInputEl=document.getElementById("photoInput");
+const frameTypeEl=document.getElementById("frameType");
+const participantNameEl=document.getElementById("participantName");
+const participantOrgEl=document.getElementById("participantOrg");
+const photoZoomEl=document.getElementById("photoZoom");
+const photoXEl=document.getElementById("photoX");
+const photoYEl=document.getElementById("photoY");
+const exportSizeEl=document.getElementById("exportSize");
+const downloadFrameEl=document.getElementById("downloadFrame");
+const shareFrameEl=document.getElementById("shareFrame");
+const copyCaptionEl=document.getElementById("copyCaption");
+const frameStatusEl=document.getElementById("frameStatus");
+
+let userPhoto=null;
+let logoImage=null;
+let currentPhotoObjectUrl=null;
+
+function rr(c,x,y,w,h,r,fill,stroke){
+  c.beginPath();
+  if(typeof c.roundRect==="function"){
+    c.roundRect(x,y,w,h,r);
+  }else{
+    const q=Math.min(r,w/2,h/2);
+    c.moveTo(x+q,y); c.lineTo(x+w-q,y); c.quadraticCurveTo(x+w,y,x+w,y+q);
+    c.lineTo(x+w,y+h-q); c.quadraticCurveTo(x+w,y+h,x+w-q,y+h);
+    c.lineTo(x+q,y+h); c.quadraticCurveTo(x,y+h,x,y+h-q);
+    c.lineTo(x,y+q); c.quadraticCurveTo(x,y,x+q,y);
+  }
+  c.closePath();
+  if(fill){c.fillStyle=fill;c.fill()}
+  if(stroke){c.strokeStyle=stroke;c.lineWidth=4;c.stroke()}
+}
+
+function clipRoundedRect(c,x,y,w,h,r){
+  c.beginPath();
+  if(typeof c.roundRect==="function"){
+    c.roundRect(x,y,w,h,r);
+  }else{
+    const q=Math.min(r,w/2,h/2);
+    c.moveTo(x+q,y); c.lineTo(x+w-q,y); c.quadraticCurveTo(x+w,y,x+w,y+q);
+    c.lineTo(x+w,y+h-q); c.quadraticCurveTo(x+w,y+h,x+w-q,y+h);
+    c.lineTo(x+q,y+h); c.quadraticCurveTo(x,y+h,x,y+h-q);
+    c.lineTo(x,y+q); c.quadraticCurveTo(x,y,x+q,y);
+  }
+  c.closePath();
+  c.clip();
+}
+
+function setCanvasSize(){
+  if(!canvas || !exportSizeEl) return;
+  const dims={
+    square:[1080,1080],
+    portrait:[1080,1350],
+    story:[1080,1920]
+  }[exportSizeEl.value] || [1080,1350];
+  canvas.width=dims[0];
+  canvas.height=dims[1];
+}
+
+function fitPhoto(c,img,x,y,w,h,z,ox,oy){
+  const iw=img.naturalWidth || img.width;
+  const ih=img.naturalHeight || img.height;
+  const ir=iw/ih, tr=w/h;
+  let dw,dh;
+  if(ir>tr){dh=h*z;dw=dh*ir}else{dw=w*z;dh=dw/ir}
+  const dx=x+(w-dw)/2+ox*(w/220);
+  const dy=y+(h-dh)/2+oy*(h/220);
+  c.drawImage(img,dx,dy,dw,dh);
+}
+
+function wrapText(c,text,x,y,maxW,lineH,maxLines=4){
+  const words=String(text).split(/\s+/);
+  let line="", lines=[];
+  words.forEach(word=>{
+    const test=line?line+" "+word:word;
+    if(c.measureText(test).width>maxW && line){lines.push(line);line=word}
+    else line=test;
+  });
+  if(line) lines.push(line);
+  lines.slice(0,maxLines).forEach((l,i)=>c.fillText(l,x,y+i*lineH));
+}
+
+function drawFrame(){
+  if(!ctx || !canvas) return;
+  setCanvasSize();
+
+  const W=canvas.width,H=canvas.height;
+  const margin=W*.07;
+  const photoTop=H*.16;
+  const photoH=H*.52;
+
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle="#f8faf8"; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle="#075c34"; ctx.fillRect(0,0,W,Math.max(24,H*.022));
+  ctx.fillStyle="#d61f26"; ctx.fillRect(0,H-Math.max(28,H*.026),W,Math.max(28,H*.026));
+
+  rr(ctx,margin,photoTop,W-2*margin,photoH,38,"#e7eee9","#075c34");
+  ctx.save();
+  clipRoundedRect(ctx,margin,photoTop,W-2*margin,photoH,38);
+
+  if(userPhoto && (userPhoto.naturalWidth || userPhoto.width)){
+    fitPhoto(
+      ctx,userPhoto,margin,photoTop,W-2*margin,photoH,
+      parseFloat(photoZoomEl?.value || "1"),
+      parseFloat(photoXEl?.value || "0"),
+      parseFloat(photoYEl?.value || "0")
+    );
+  }else{
+    ctx.fillStyle="#e9f0ec"; ctx.fillRect(margin,photoTop,W-2*margin,photoH);
+    ctx.fillStyle="#6d7d74"; ctx.font=`700 ${Math.round(W*.035)}px Arial`;
+    ctx.textAlign="center"; ctx.fillText("Upload your photograph",W/2,photoTop+photoH/2);
+  }
+  ctx.restore();
+
+  if(logoImage && (logoImage.naturalWidth || logoImage.width)){
+    const lw=W*.18;
+    ctx.fillStyle="#fff"; ctx.fillRect(W/2-lw/2,30,lw,lw);
+    ctx.drawImage(logoImage,W/2-lw/2,30,lw,lw);
+  }
+
+  const labels={
+    day1:["I'M JOINING","THE JCTC CYBERCRIME AWARENESS WALK","20 OCTOBER 2026 • 7:30 AM"],
+    day2:["I WILL ATTEND","THE JCTC NATIONAL CONSULTATION ON CYBERCRIME","21 OCTOBER 2026 • 8:00 AM"],
+    support:["I SUPPORT","#SAYNOTOCYBERCRIME","DON'T FALL VICTIM. DON'T PERPETRATE."]
+  }[frameTypeEl?.value || "day1"];
+
+  const bandY=photoTop+photoH-H*.055;
+  ctx.fillStyle="rgba(3,88,48,.94)"; ctx.fillRect(margin,bandY,W-2*margin,H*.12);
+  ctx.textAlign="center";
+  ctx.fillStyle="#fff"; ctx.font=`900 ${Math.round(W*.05)}px Arial`; ctx.fillText(labels[0],W/2,bandY+H*.04);
+  ctx.font=`800 ${Math.round(W*.031)}px Arial`; wrapText(ctx,labels[1],W/2,bandY+H*.077,W*.78,H*.034,2);
+  ctx.fillStyle="#ffe7a2"; ctx.font=`700 ${Math.round(W*.022)}px Arial`; ctx.fillText(labels[2],W/2,bandY+H*.108);
+
+  ctx.textAlign="left";
+  const name=(participantNameEl?.value || "").trim();
+  const org=(participantOrgEl?.value || "").trim();
+  if(name){
+    ctx.fillStyle="#0a1110";ctx.font=`900 ${Math.round(W*.036)}px Arial`;ctx.fillText(name,margin,H*.84);
+  }
+  if(org){
+    ctx.fillStyle="#526159";ctx.font=`600 ${Math.round(W*.023)}px Arial`;wrapText(ctx,org,margin,H*.875,W*.8,H*.03,2);
+  }
+
+  ctx.fillStyle="#075c34";ctx.font=`900 ${Math.round(W*.025)}px Arial`;
+  ctx.fillText("JOINT CASE TEAM ON CYBERCRIMES (JCTC)",margin,H*.94);
+  ctx.fillStyle="#d61f26";ctx.font=`800 ${Math.round(W*.023)}px Arial`;
+  ctx.fillText("SAY NO TO CYBERCRIME",margin,H*.974);
+}
+
+async function initFrame(){
+  if(!canvas) return;
+  try{logoImage=await loadImg("assets/jctc-logo.jpg")}
+  catch(e){console.warn("JCTC logo could not be loaded in the frame.",e)}
+  drawFrame();
+}
+
+function setupFrame(){
+  if(!canvas || !photoInputEl) return;
+
+  photoInputEl.addEventListener("change",()=>{
+    const file=photoInputEl.files?.[0];
+    if(!file) return;
+
+    if(!file.type.startsWith("image/")){
+      if(frameStatusEl) frameStatusEl.textContent="Please choose a JPG, PNG, WEBP or other image file.";
+      return;
+    }
+
+    if(currentPhotoObjectUrl) URL.revokeObjectURL(currentPhotoObjectUrl);
+    currentPhotoObjectUrl=URL.createObjectURL(file);
+
+    const im=new Image();
+    im.onload=()=>{
+      userPhoto=im;
+      if(photoZoomEl) photoZoomEl.value="1";
+      if(photoXEl) photoXEl.value="0";
+      if(photoYEl) photoYEl.value="0";
+      drawFrame();
+      if(frameStatusEl) frameStatusEl.textContent="Photo loaded successfully. Use the controls to position it.";
+    };
+    im.onerror=()=>{
+      userPhoto=null;
+      if(frameStatusEl) frameStatusEl.textContent="The selected photo could not be loaded. Please try a JPG or PNG image.";
+      drawFrame();
+    };
+    im.src=currentPhotoObjectUrl;
+  });
+
+  [frameTypeEl,participantNameEl,participantOrgEl,photoZoomEl,photoXEl,photoYEl,exportSizeEl]
+    .filter(Boolean)
+    .forEach(element=>{
+      element.addEventListener("input",drawFrame);
+      element.addEventListener("change",drawFrame);
+    });
+
+  downloadFrameEl?.addEventListener("click",()=>{
+    drawFrame();
+    const a=document.createElement("a");
+    a.download=`JCTC-${frameTypeEl?.value || "campaign"}-campaign-frame.png`;
+    a.href=canvas.toDataURL("image/png");
+    a.click();
+    if(frameStatusEl) frameStatusEl.textContent="Your campaign frame has been generated for download.";
+    jctcTrack("frame_download");
+  });
+
+  shareFrameEl?.addEventListener("click",()=>{
+    drawFrame();
+    canvas.toBlob(async blob=>{
+      if(!blob) return;
+      const file=new File([blob],"JCTC-campaign-frame.png",{type:"image/png"});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        try{
+          await navigator.share({title:"JCTC Cybercrime Awareness Campaign",text:CAMPAIGN_CAPTION,files:[file]});
+          jctcTrack("frame_share");
+        }catch(e){}
+      }else{
+        shareText(CAMPAIGN_CAPTION);
+      }
+    },"image/png");
+  });
+
+  copyCaptionEl?.addEventListener("click",async()=>{
+    try{
+      await navigator.clipboard?.writeText(CAMPAIGN_CAPTION);
+      if(frameStatusEl) frameStatusEl.textContent="Campaign caption copied.";
+    }catch(e){
+      if(frameStatusEl) frameStatusEl.textContent="Copy was blocked by the browser.";
+    }
+  });
+}
 async function downloadConductCard(c){
   const k=document.createElement("canvas");k.width=1080;k.height=1350;const x=k.getContext("2d");x.fillStyle="#06110d";x.fillRect(0,0,1080,1350);x.fillStyle="#075c34";x.fillRect(0,0,1080,26);x.fillStyle="#d61f26";x.fillRect(0,1324,1080,26);
   const im=await loadImg("assets/jctc-logo.jpg");x.fillStyle="#fff";x.fillRect(55,55,160,160);x.drawImage(im,55,55,160,160);x.fillStyle="#8fdcac";x.font="900 28px Arial";x.fillText("JCTC CYBER AWARENESS SERIES",245,110);x.fillStyle="#fff";x.font="900 62px Arial";wrapText(x,c.title.toUpperCase(),55,300,950,72,3);x.fillStyle="#d61f26";x.font="900 28px Arial";x.fillText("KNOW THE CONDUCT. KNOW THE CONSEQUENCES.",55,510);x.fillStyle="#fff";x.font="600 31px Arial";wrapText(x,c.what,55,585,940,43,5);x.fillStyle="#8fdcac";x.font="900 28px Arial";x.fillText("REAL-LIFE EXAMPLE",55,820);x.fillStyle="#fff";x.font="600 28px Arial";wrapText(x,c.example,55,870,940,40,4);x.fillStyle="#8fdcac";x.font="900 28px Arial";x.fillText("WHAT TO DO",55,1060);x.fillStyle="#fff";x.font="600 28px Arial";wrapText(x,c.action,55,1110,940,40,4);x.fillStyle="#fff";x.font="900 27px Arial";x.fillText("DON'T FALL VICTIM. DON'T PERPETRATE.",55,1275);
