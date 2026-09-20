@@ -98,219 +98,412 @@ function loadImg(src){
 
 const canvas=document.getElementById("frameCanvas");
 const ctx=canvas?.getContext("2d");
-const photoInputEl=document.getElementById("photoInput");
-const frameTypeEl=document.getElementById("frameType");
-const participantNameEl=document.getElementById("participantName");
-const participantOrgEl=document.getElementById("participantOrg");
-const photoZoomEl=document.getElementById("photoZoom");
-const photoXEl=document.getElementById("photoX");
-const photoYEl=document.getElementById("photoY");
-const exportSizeEl=document.getElementById("exportSize");
-const downloadFrameEl=document.getElementById("downloadFrame");
-const shareFrameEl=document.getElementById("shareFrame");
-const copyCaptionEl=document.getElementById("copyCaption");
-const frameStatusEl=document.getElementById("frameStatus");
+
+const frameUI={
+  input:document.getElementById("photoInput"),
+  type:document.getElementById("frameType"),
+  name:document.getElementById("participantName"),
+  org:document.getElementById("participantOrg"),
+  zoom:document.getElementById("photoZoom"),
+  x:document.getElementById("photoX"),
+  y:document.getElementById("photoY"),
+  size:document.getElementById("exportSize"),
+  download:document.getElementById("downloadFrame"),
+  share:document.getElementById("shareFrame"),
+  copy:document.getElementById("copyCaption"),
+  status:document.getElementById("frameStatus"),
+  reset:document.getElementById("resetPhotoPosition"),
+  thumbRow:document.getElementById("uploadPreviewRow"),
+  thumb:document.getElementById("uploadedThumb"),
+  fileName:document.getElementById("uploadedFileName"),
+  zoomValue:document.getElementById("photoZoomValue"),
+  xValue:document.getElementById("photoXValue"),
+  yValue:document.getElementById("photoYValue")
+};
 
 let userPhoto=null;
+let userPhotoDataURL="";
 let logoImage=null;
-let currentPhotoObjectUrl=null;
 
-function rr(c,x,y,w,h,r,fill,stroke){
+function roundedPath(c,x,y,w,h,r){
+  const q=Math.min(r,w/2,h/2);
   c.beginPath();
   if(typeof c.roundRect==="function"){
-    c.roundRect(x,y,w,h,r);
+    c.roundRect(x,y,w,h,q);
   }else{
-    const q=Math.min(r,w/2,h/2);
-    c.moveTo(x+q,y); c.lineTo(x+w-q,y); c.quadraticCurveTo(x+w,y,x+w,y+q);
-    c.lineTo(x+w,y+h-q); c.quadraticCurveTo(x+w,y+h,x+w-q,y+h);
-    c.lineTo(x+q,y+h); c.quadraticCurveTo(x,y+h,x,y+h-q);
-    c.lineTo(x,y+q); c.quadraticCurveTo(x,y,x+q,y);
+    c.moveTo(x+q,y);
+    c.lineTo(x+w-q,y);c.quadraticCurveTo(x+w,y,x+w,y+q);
+    c.lineTo(x+w,y+h-q);c.quadraticCurveTo(x+w,y+h,x+w-q,y+h);
+    c.lineTo(x+q,y+h);c.quadraticCurveTo(x,y+h,x,y+h-q);
+    c.lineTo(x,y+q);c.quadraticCurveTo(x,y,x+q,y);
+    c.closePath();
   }
-  c.closePath();
+}
+
+function roundedRect(c,x,y,w,h,r,fill,stroke){
+  roundedPath(c,x,y,w,h,r);
   if(fill){c.fillStyle=fill;c.fill()}
   if(stroke){c.strokeStyle=stroke;c.lineWidth=4;c.stroke()}
 }
 
-function clipRoundedRect(c,x,y,w,h,r){
-  c.beginPath();
-  if(typeof c.roundRect==="function"){
-    c.roundRect(x,y,w,h,r);
-  }else{
-    const q=Math.min(r,w/2,h/2);
-    c.moveTo(x+q,y); c.lineTo(x+w-q,y); c.quadraticCurveTo(x+w,y,x+w,y+q);
-    c.lineTo(x+w,y+h-q); c.quadraticCurveTo(x+w,y+h,x+w-q,y+h);
-    c.lineTo(x+q,y+h); c.quadraticCurveTo(x,y+h,x,y+h-q);
-    c.lineTo(x,y+q); c.quadraticCurveTo(x,y,x+q,y);
-  }
-  c.closePath();
-  c.clip();
-}
-
 function setCanvasSize(){
-  if(!canvas || !exportSizeEl) return;
+  if(!canvas) return;
   const dims={
     square:[1080,1080],
     portrait:[1080,1350],
     story:[1080,1920]
-  }[exportSizeEl.value] || [1080,1350];
-  canvas.width=dims[0];
-  canvas.height=dims[1];
+  }[frameUI.size?.value] || [1080,1350];
+  if(canvas.width!==dims[0] || canvas.height!==dims[1]){
+    canvas.width=dims[0];
+    canvas.height=dims[1];
+  }
 }
 
-function fitPhoto(c,img,x,y,w,h,z,ox,oy){
+function drawImageCover(c,img,x,y,w,h,zoom=1.15,panX=0,panY=0,background=false){
   const iw=img.naturalWidth || img.width;
   const ih=img.naturalHeight || img.height;
-  const ir=iw/ih, tr=w/h;
-  let dw,dh;
-  if(ir>tr){dh=h*z;dw=dh*ir}else{dw=w*z;dh=dw/ir}
-  const dx=x+(w-dw)/2+ox*(w/220);
-  const dy=y+(h-dh)/2+oy*(h/220);
-  c.drawImage(img,dx,dy,dw,dh);
+  if(!iw || !ih) return;
+
+  const baseScale=Math.max(w/iw,h/ih);
+  const scale=baseScale*Math.max(1,zoom);
+  const dw=iw*scale, dh=ih*scale;
+
+  // Keep the image covering the complete frame while still allowing panning.
+  const maxX=Math.max(0,(dw-w)/2);
+  const maxY=Math.max(0,(dh-h)/2);
+  const requestedX=(Number(panX)||0)/100;
+  const requestedY=(Number(panY)||0)/100;
+  const shiftX=maxX*requestedX;
+  const shiftY=maxY*requestedY;
+
+  const dx=x+(w-dw)/2+shiftX;
+  const dy=y+(h-dh)/2+shiftY;
+
+  if(background){
+    c.save();
+    c.filter="blur(18px) brightness(.82)";
+    c.globalAlpha=.65;
+    c.drawImage(img,dx-20,dy-20,dw+40,dh+40);
+    c.restore();
+  }else{
+    c.drawImage(img,dx,dy,dw,dh);
+  }
 }
 
-function wrapText(c,text,x,y,maxW,lineH,maxLines=4){
-  const words=String(text).split(/\s+/);
-  let line="", lines=[];
-  words.forEach(word=>{
-    const test=line?line+" "+word:word;
-    if(c.measureText(test).width>maxW && line){lines.push(line);line=word}
-    else line=test;
-  });
+function fontPx(c,size,weight=800,family="Arial"){
+  c.font=`${weight} ${Math.max(10,Math.round(size))}px ${family}`;
+}
+
+function fitSingleLine(c,text,maxWidth,startSize,minSize,weight=900){
+  let size=startSize;
+  while(size>minSize){
+    fontPx(c,size,weight);
+    if(c.measureText(text).width<=maxWidth) break;
+    size-=1;
+  }
+  return size;
+}
+
+function wrapWords(c,text,maxWidth){
+  const words=String(text).trim().split(/\s+/).filter(Boolean);
+  const lines=[];
+  let line="";
+  for(const word of words){
+    const test=line?`${line} ${word}`:word;
+    if(line && c.measureText(test).width>maxWidth){
+      lines.push(line);
+      line=word;
+    }else{
+      line=test;
+    }
+  }
   if(line) lines.push(line);
-  lines.slice(0,maxLines).forEach((l,i)=>c.fillText(l,x,y+i*lineH));
+  return lines;
+}
+
+function fitWrapped(c,text,maxWidth,maxLines,startSize,minSize,weight=800){
+  let size=startSize;
+  let lines=[];
+  while(size>=minSize){
+    fontPx(c,size,weight);
+    lines=wrapWords(c,text,maxWidth);
+    if(lines.length<=maxLines && lines.every(line=>c.measureText(line).width<=maxWidth)){
+      return {size,lines};
+    }
+    size-=1;
+  }
+
+  fontPx(c,minSize,weight);
+  lines=wrapWords(c,text,maxWidth);
+
+  // Last-resort fit: merge overflow into the final line and shrink further if required.
+  if(lines.length>maxLines){
+    const kept=lines.slice(0,maxLines-1);
+    const merged=lines.slice(maxLines-1).join(" ");
+    kept.push(merged);
+    lines=kept;
+  }
+
+  let fallback=minSize;
+  while(fallback>9 && lines.some(line=>{
+    fontPx(c,fallback,weight);
+    return c.measureText(line).width>maxWidth;
+  })){
+    fallback-=1;
+  }
+  fontPx(c,fallback,weight);
+  return {size:fallback,lines};
+}
+
+function drawCenteredBlock(c,text,cx,top,maxWidth,maxLines,startSize,minSize,lineHeightFactor=1.12,weight=800,color="#fff"){
+  const fitted=fitWrapped(c,text,maxWidth,maxLines,startSize,minSize,weight);
+  const lineHeight=fitted.size*lineHeightFactor;
+  c.textAlign="center";
+  c.textBaseline="top";
+  c.fillStyle=color;
+  fontPx(c,fitted.size,weight);
+  fitted.lines.forEach((line,i)=>c.fillText(line,cx,top+i*lineHeight));
+  return {height:fitted.lines.length*lineHeight,size:fitted.size};
+}
+
+function drawLeftBlock(c,text,x,top,maxWidth,maxLines,startSize,minSize,lineHeightFactor=1.15,weight=800,color="#0b1110"){
+  const fitted=fitWrapped(c,text,maxWidth,maxLines,startSize,minSize,weight);
+  const lineHeight=fitted.size*lineHeightFactor;
+  c.textAlign="left";
+  c.textBaseline="top";
+  c.fillStyle=color;
+  fontPx(c,fitted.size,weight);
+  fitted.lines.forEach((line,i)=>c.fillText(line,x,top+i*lineHeight));
+  return {height:fitted.lines.length*lineHeight,size:fitted.size};
+}
+
+function updateControlReadouts(){
+  if(frameUI.zoomValue) frameUI.zoomValue.textContent=`${Math.round((parseFloat(frameUI.zoom?.value||"1.15"))*100)}%`;
+  if(frameUI.xValue) frameUI.xValue.textContent=frameUI.x?.value || "0";
+  if(frameUI.yValue) frameUI.yValue.textContent=frameUI.y?.value || "0";
 }
 
 function drawFrame(){
   if(!ctx || !canvas) return;
   setCanvasSize();
+  updateControlReadouts();
 
   const W=canvas.width,H=canvas.height;
-  const margin=W*.07;
-  const photoTop=H*.16;
-  const photoH=H*.52;
+  const margin=W*.065;
+  const photoW=W-2*margin;
+  const footerH=Math.max(28,H*.022);
+  const footerY=H-footerH;
 
   ctx.clearRect(0,0,W,H);
-  ctx.fillStyle="#f8faf8"; ctx.fillRect(0,0,W,H);
-  ctx.fillStyle="#075c34"; ctx.fillRect(0,0,W,Math.max(24,H*.022));
-  ctx.fillStyle="#d61f26"; ctx.fillRect(0,H-Math.max(28,H*.026),W,Math.max(28,H*.026));
+  ctx.fillStyle="#f9fbfa";ctx.fillRect(0,0,W,H);
+  ctx.fillStyle="#075c34";ctx.fillRect(0,0,W,Math.max(20,H*.016));
+  ctx.fillStyle="#d61f26";ctx.fillRect(0,footerY,W,footerH);
 
-  rr(ctx,margin,photoTop,W-2*margin,photoH,38,"#e7eee9","#075c34");
+  // Header identity
+  const logoSize=Math.min(W*.145,H*.095);
+  if(logoImage && (logoImage.naturalWidth || logoImage.width)){
+    const lx=(W-logoSize)/2;
+    const ly=H*.032;
+    roundedRect(ctx,lx-8,ly-8,logoSize+16,logoSize+16,18,"#fff","#dce6e0");
+    ctx.drawImage(logoImage,lx,ly,logoSize,logoSize);
+  }
+
+  // Photo region
+  const photoTop=H*.145;
+  const photoBottom=H*.675;
+  const photoH=photoBottom-photoTop;
+
+  roundedRect(ctx,margin,photoTop,photoW,photoH,34,"#e7eee9","#075c34");
   ctx.save();
-  clipRoundedRect(ctx,margin,photoTop,W-2*margin,photoH,38);
+  roundedPath(ctx,margin,photoTop,photoW,photoH,34);
+  ctx.clip();
 
   if(userPhoto && (userPhoto.naturalWidth || userPhoto.width)){
-    fitPhoto(
-      ctx,userPhoto,margin,photoTop,W-2*margin,photoH,
-      parseFloat(photoZoomEl?.value || "1"),
-      parseFloat(photoXEl?.value || "0"),
-      parseFloat(photoYEl?.value || "0")
+    drawImageCover(ctx,userPhoto,margin,photoTop,photoW,photoH,1,0,0,true);
+    drawImageCover(
+      ctx,userPhoto,margin,photoTop,photoW,photoH,
+      parseFloat(frameUI.zoom?.value || "1.15"),
+      parseFloat(frameUI.x?.value || "0"),
+      parseFloat(frameUI.y?.value || "0"),
+      false
     );
   }else{
-    ctx.fillStyle="#e9f0ec"; ctx.fillRect(margin,photoTop,W-2*margin,photoH);
-    ctx.fillStyle="#6d7d74"; ctx.font=`700 ${Math.round(W*.035)}px Arial`;
-    ctx.textAlign="center"; ctx.fillText("Upload your photograph",W/2,photoTop+photoH/2);
+    ctx.fillStyle="#e9f0ec";ctx.fillRect(margin,photoTop,photoW,photoH);
+    const phSize=fitSingleLine(ctx,"Upload your photograph to preview the campaign frame",photoW*.78,W*.03,W*.015,700);
+    ctx.fillStyle="#65756c";fontPx(ctx,phSize,700);
+    ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.fillText("Upload your photograph to preview the campaign frame",W/2,photoTop+photoH/2);
   }
   ctx.restore();
-
-  if(logoImage && (logoImage.naturalWidth || logoImage.width)){
-    const lw=W*.18;
-    ctx.fillStyle="#fff"; ctx.fillRect(W/2-lw/2,30,lw,lw);
-    ctx.drawImage(logoImage,W/2-lw/2,30,lw,lw);
-  }
 
   const labels={
     day1:["I'M JOINING","THE JCTC CYBERCRIME AWARENESS WALK","20 OCTOBER 2026 • 7:30 AM"],
     day2:["I WILL ATTEND","THE JCTC NATIONAL CONSULTATION ON CYBERCRIME","21 OCTOBER 2026 • 8:00 AM"],
     support:["I SUPPORT","#SAYNOTOCYBERCRIME","DON'T FALL VICTIM. DON'T PERPETRATE."]
-  }[frameTypeEl?.value || "day1"];
+  }[frameUI.type?.value || "day1"];
 
-  const bandY=photoTop+photoH-H*.055;
-  ctx.fillStyle="rgba(3,88,48,.94)"; ctx.fillRect(margin,bandY,W-2*margin,H*.12);
-  ctx.textAlign="center";
-  ctx.fillStyle="#fff"; ctx.font=`900 ${Math.round(W*.05)}px Arial`; ctx.fillText(labels[0],W/2,bandY+H*.04);
-  ctx.font=`800 ${Math.round(W*.031)}px Arial`; wrapText(ctx,labels[1],W/2,bandY+H*.077,W*.78,H*.034,2);
-  ctx.fillStyle="#ffe7a2"; ctx.font=`700 ${Math.round(W*.022)}px Arial`; ctx.fillText(labels[2],W/2,bandY+H*.108);
+  // Taller banner: prevents long Day 2 copy from colliding with date/time.
+  const bandH=H*.155;
+  const bandY=photoBottom-bandH;
+  ctx.fillStyle="rgba(3,88,48,.96)";
+  ctx.fillRect(margin,bandY,photoW,bandH);
 
-  ctx.textAlign="left";
-  const name=(participantNameEl?.value || "").trim();
-  const org=(participantOrgEl?.value || "").trim();
+  const line1=fitSingleLine(ctx,labels[0],photoW*.86,W*.047,W*.026,900);
+  ctx.textAlign="center";ctx.textBaseline="top";
+  fontPx(ctx,line1,900);ctx.fillStyle="#fff";
+  ctx.fillText(labels[0],W/2,bandY+bandH*.08);
+
+  const titleTop=bandY+bandH*.34;
+  const titleBlock=drawCenteredBlock(
+    ctx,labels[1],W/2,titleTop,photoW*.88,2,W*.028,W*.016,1.06,850,"#fff"
+  );
+
+  const dateSize=fitSingleLine(ctx,labels[2],photoW*.82,W*.020,W*.013,800);
+  fontPx(ctx,dateSize,800);ctx.fillStyle="#ffe49a";
+  ctx.textAlign="center";ctx.textBaseline="bottom";
+  ctx.fillText(labels[2],W/2,bandY+bandH*.93);
+
+  // Optional participant information. Long entries wrap instead of clipping.
+  const infoLeft=margin;
+  const infoWidth=photoW;
+  let cursorY=H*.705;
+  const name=(frameUI.name?.value || "").trim();
+  const org=(frameUI.org?.value || "").trim();
+
   if(name){
-    ctx.fillStyle="#0a1110";ctx.font=`900 ${Math.round(W*.036)}px Arial`;ctx.fillText(name,margin,H*.84);
+    const b=drawLeftBlock(ctx,name,infoLeft,cursorY,infoWidth,2,W*.030,W*.014,1.06,900,"#0b1110");
+    cursorY+=b.height+H*.008;
   }
   if(org){
-    ctx.fillStyle="#526159";ctx.font=`600 ${Math.round(W*.023)}px Arial`;wrapText(ctx,org,margin,H*.875,W*.8,H*.03,2);
+    const b=drawLeftBlock(ctx,org,infoLeft,cursorY,infoWidth,2,W*.019,W*.011,1.10,650,"#58675f");
+    cursorY+=b.height+H*.008;
   }
 
-  ctx.fillStyle="#075c34";ctx.font=`900 ${Math.round(W*.025)}px Arial`;
-  ctx.fillText("JOINT CASE TEAM ON CYBERCRIMES (JCTC)",margin,H*.94);
-  ctx.fillStyle="#d61f26";ctx.font=`800 ${Math.round(W*.023)}px Arial`;
-  ctx.fillText("SAY NO TO CYBERCRIME",margin,H*.974);
-}
+  // Institutional identity and slogans have fixed protected zones.
+  const institutionalY=H*.850;
+  const jctcLine="JOINT CASE TEAM ON CYBERCRIMES (JCTC)";
+  const jSize=fitSingleLine(ctx,jctcLine,infoWidth,W*.022,W*.012,900);
+  fontPx(ctx,jSize,900);ctx.fillStyle="#075c34";
+  ctx.textAlign="left";ctx.textBaseline="top";
+  ctx.fillText(jctcLine,infoLeft,institutionalY);
 
+  const slogan="SAY NO TO CYBERCRIME";
+  const sloganY=H*.895;
+  const sSize=fitSingleLine(ctx,slogan,infoWidth,W*.023,W*.013,900);
+  fontPx(ctx,sSize,900);ctx.fillStyle="#d61f26";
+  ctx.fillText(slogan,infoLeft,sloganY);
+
+  const secondary="DON'T FALL VICTIM. DON'T PERPETRATE.";
+  const secY=H*.930;
+  const secSize=fitSingleLine(ctx,secondary,infoWidth,W*.017,W*.010,800);
+  fontPx(ctx,secSize,800);ctx.fillStyle="#27372f";
+  ctx.fillText(secondary,infoLeft,secY);
+
+  // Keep the final 4.8% of the frame free of text before the red footer.
+}
 async function initFrame(){
   if(!canvas) return;
-  try{logoImage=await loadImg("assets/jctc-logo.jpg")}
-  catch(e){console.warn("JCTC logo could not be loaded in the frame.",e)}
+  try{
+    logoImage=await loadImg("assets/jctc-logo.jpg");
+  }catch(e){
+    console.warn("JCTC logo could not be loaded into the campaign-frame canvas.",e);
+  }
   drawFrame();
 }
 
-function setupFrame(){
-  if(!canvas || !photoInputEl) return;
+function readPhotoFile(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error("FileReader could not read this image."));
+    reader.onload=()=>{
+      const dataURL=String(reader.result || "");
+      const im=new Image();
+      im.onload=()=>resolve({image:im,dataURL});
+      im.onerror=()=>reject(new Error("The browser could not decode this image."));
+      im.src=dataURL;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
-  photoInputEl.addEventListener("change",()=>{
-    const file=photoInputEl.files?.[0];
+function setupFrame(){
+  if(!canvas || !frameUI.input) return;
+
+  frameUI.input.addEventListener("change",async()=>{
+    const file=frameUI.input.files?.[0];
     if(!file) return;
 
-    if(!file.type.startsWith("image/")){
-      if(frameStatusEl) frameStatusEl.textContent="Please choose a JPG, PNG, WEBP or other image file.";
-      return;
-    }
+    if(frameUI.status) frameUI.status.textContent="Loading your photograph…";
 
-    if(currentPhotoObjectUrl) URL.revokeObjectURL(currentPhotoObjectUrl);
-    currentPhotoObjectUrl=URL.createObjectURL(file);
+    try{
+      const loaded=await readPhotoFile(file);
+      userPhoto=loaded.image;
+      userPhotoDataURL=loaded.dataURL;
 
-    const im=new Image();
-    im.onload=()=>{
-      userPhoto=im;
-      if(photoZoomEl) photoZoomEl.value="1";
-      if(photoXEl) photoXEl.value="0";
-      if(photoYEl) photoYEl.value="0";
+      if(frameUI.zoom) frameUI.zoom.value="1.15";
+      if(frameUI.x) frameUI.x.value="0";
+      if(frameUI.y) frameUI.y.value="0";
+
+      if(frameUI.thumb){
+        frameUI.thumb.src=userPhotoDataURL;
+        frameUI.thumb.alt=`Selected photograph: ${file.name}`;
+      }
+      if(frameUI.fileName) frameUI.fileName.textContent=file.name;
+      if(frameUI.thumbRow) frameUI.thumbRow.hidden=false;
+
       drawFrame();
-      if(frameStatusEl) frameStatusEl.textContent="Photo loaded successfully. Use the controls to position it.";
-    };
-    im.onerror=()=>{
+      if(frameUI.status){
+        frameUI.status.textContent=`Photo loaded successfully (${userPhoto.naturalWidth} × ${userPhoto.naturalHeight}). Use the position controls to adjust it.`;
+      }
+    }catch(err){
+      console.error(err);
       userPhoto=null;
-      if(frameStatusEl) frameStatusEl.textContent="The selected photo could not be loaded. Please try a JPG or PNG image.";
+      userPhotoDataURL="";
+      if(frameUI.thumbRow) frameUI.thumbRow.hidden=true;
       drawFrame();
-    };
-    im.src=currentPhotoObjectUrl;
+      if(frameUI.status){
+        frameUI.status.textContent="The browser could not display this file. Please use a JPG, PNG or WEBP photograph.";
+      }
+    }
   });
 
-  [frameTypeEl,participantNameEl,participantOrgEl,photoZoomEl,photoXEl,photoYEl,exportSizeEl]
+  [frameUI.type,frameUI.name,frameUI.org,frameUI.zoom,frameUI.x,frameUI.y,frameUI.size]
     .filter(Boolean)
     .forEach(element=>{
       element.addEventListener("input",drawFrame);
       element.addEventListener("change",drawFrame);
     });
 
-  downloadFrameEl?.addEventListener("click",()=>{
+  frameUI.reset?.addEventListener("click",()=>{
+    if(frameUI.zoom) frameUI.zoom.value="1.15";
+    if(frameUI.x) frameUI.x.value="0";
+    if(frameUI.y) frameUI.y.value="0";
+    drawFrame();
+    if(frameUI.status && userPhoto) frameUI.status.textContent="Photo position reset.";
+  });
+
+  frameUI.download?.addEventListener("click",()=>{
     drawFrame();
     const a=document.createElement("a");
-    a.download=`JCTC-${frameTypeEl?.value || "campaign"}-campaign-frame.png`;
+    a.download=`JCTC-${frameUI.type?.value || "campaign"}-campaign-frame.png`;
     a.href=canvas.toDataURL("image/png");
     a.click();
-    if(frameStatusEl) frameStatusEl.textContent="Your campaign frame has been generated for download.";
+    if(frameUI.status) frameUI.status.textContent="Campaign frame generated successfully.";
     jctcTrack("frame_download");
   });
 
-  shareFrameEl?.addEventListener("click",()=>{
+  frameUI.share?.addEventListener("click",()=>{
     drawFrame();
     canvas.toBlob(async blob=>{
       if(!blob) return;
       const file=new File([blob],"JCTC-campaign-frame.png",{type:"image/png"});
       if(navigator.canShare && navigator.canShare({files:[file]})){
         try{
-          await navigator.share({title:"JCTC Cybercrime Awareness Campaign",text:CAMPAIGN_CAPTION,files:[file]});
+          await navigator.share({
+            title:"JCTC Cybercrime Awareness Campaign",
+            text:CAMPAIGN_CAPTION,
+            files:[file]
+          });
           jctcTrack("frame_share");
         }catch(e){}
       }else{
@@ -319,12 +512,12 @@ function setupFrame(){
     },"image/png");
   });
 
-  copyCaptionEl?.addEventListener("click",async()=>{
+  frameUI.copy?.addEventListener("click",async()=>{
     try{
       await navigator.clipboard?.writeText(CAMPAIGN_CAPTION);
-      if(frameStatusEl) frameStatusEl.textContent="Campaign caption copied.";
+      if(frameUI.status) frameUI.status.textContent="Campaign caption copied.";
     }catch(e){
-      if(frameStatusEl) frameStatusEl.textContent="Copy was blocked by the browser.";
+      if(frameUI.status) frameUI.status.textContent="Copy was blocked by the browser.";
     }
   });
 }

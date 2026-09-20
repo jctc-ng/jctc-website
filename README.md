@@ -51,3 +51,15 @@ If an official custom domain is later activated, update:
 - `sitemap.xml`
 
 Do **not** add a GitHub `CNAME` file until DNS for the approved custom domain is ready.
+
+
+## Frame generator reliability update — 20 September 2026
+- Uploaded photos are read with FileReader as data URLs for broader browser compatibility.
+- A visible thumbnail confirms that the selected file loaded successfully.
+- Horizontal and vertical controls redraw the canvas immediately.
+- Panning is constrained so the image continues covering the frame.
+- Default zoom is 115% so both positioning controls have useful movement.
+- Reset Photo Position restores a centred 115% view.
+- Text sizes automatically shrink where necessary.
+- “SAY NO TO CYBERCRIME” and “DON'T FALL VICTIM. DON'T PERPETRATE.” have dedicated safe areas above the red footer.
+- CSS and JavaScript use a version query so GitHub Pages visitors do not continue using a cached older script.

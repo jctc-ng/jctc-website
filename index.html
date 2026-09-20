@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#075c34">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="description" content="Official JCTC cybercrime awareness platform: recognise criminalised cyber conduct, protect yourself, preserve evidence, explore the 2026 campaign and register for Day 2.">
   <meta name="robots" content="index,follow">
   <link rel="canonical" href="https://shausawa.github.io/jctc-website/">
@@ -18,7 +21,7 @@
   <meta name="twitter:description" content="Recognise it. Preserve the Evidence. Report it.">
   <meta name="twitter:image" content="https://shausawa.github.io/jctc-website/assets/social-preview.jpg">
   <title>JCTC | Cybercrime Awareness Campaign 2026</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20260920-4">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to main content</a>
@@ -236,7 +239,8 @@
       <div class="frame-grid">
         <div class="frame-controls">
           <label for="photoInput">1. Upload photograph</label>
-          <input id="photoInput" type="file" accept="image/*">
+          <input id="photoInput" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+          <small class="upload-help">Supported: JPG, PNG and WEBP. The photo stays in your browser.</small>
 
           <label for="frameType">2. Choose frame</label>
           <select id="frameType">
@@ -246,16 +250,35 @@
           </select>
 
           <label for="participantName">3. Name (optional)</label>
-          <input id="participantName" type="text" maxlength="50" placeholder="Your name">
+          <input id="participantName" type="text" maxlength="80" placeholder="Your name">
 
           <label for="participantOrg">Organisation / Designation (optional)</label>
-          <input id="participantOrg" type="text" maxlength="70" placeholder="Organisation or designation">
+          <input id="participantOrg" type="text" maxlength="120" placeholder="Organisation or designation">
+
+          <div id="uploadPreviewRow" class="upload-preview-row" hidden>
+            <img id="uploadedThumb" alt="Preview of the photograph selected for the campaign frame">
+            <div>
+              <strong id="uploadedFileName">Photo selected</strong>
+              <span>Your photo is ready for positioning.</span>
+            </div>
+          </div>
 
           <div class="range-grid">
-            <label>Zoom <input id="photoZoom" type="range" min="1" max="2.4" step="0.05" value="1"></label>
-            <label>Horizontal <input id="photoX" type="range" min="-100" max="100" step="1" value="0"></label>
-            <label>Vertical <input id="photoY" type="range" min="-100" max="100" step="1" value="0"></label>
+            <label>
+              <span>Zoom <output id="photoZoomValue">115%</output></span>
+              <input id="photoZoom" type="range" min="1" max="2.4" step="0.05" value="1.15">
+            </label>
+            <label>
+              <span>Horizontal position <output id="photoXValue">0</output></span>
+              <input id="photoX" type="range" min="-100" max="100" step="1" value="0">
+            </label>
+            <label>
+              <span>Vertical position <output id="photoYValue">0</output></span>
+              <input id="photoY" type="range" min="-100" max="100" step="1" value="0">
+            </label>
           </div>
+
+          <button id="resetPhotoPosition" class="reset-position" type="button">Reset photo position</button>
 
           <label for="exportSize">4. Export size</label>
           <select id="exportSize">
@@ -438,6 +461,6 @@
   </div>
 </footer>
 
-<script src="app.js" defer></script>
+<script src="app.js?v=20260920-4" defer></script>
 </body>
 </html>

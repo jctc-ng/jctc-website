@@ -46,3 +46,43 @@ footer{background:var(--dark);color:#c7d4cd;padding:28px 0}.footer-grid{display:
 @media(max-width:760px){body{font-size:16px}.topbar-inner{justify-content:center;text-align:center}.topbar-inner span:last-child{display:none}.brand-text span{display:none}.brand-text strong{font-size:.9rem}.hero-grid{padding:50px 0}.hero h1{font-size:3.7rem}.section{padding:56px 0}.section-head{flex-direction:column;align-items:flex-start;gap:12px}.conduct-grid,.scheme-grid,.two-col,.event-grid,.law-card,.social-grid,.privacy-grid{grid-template-columns:1fr}.steps-grid{grid-template-columns:1fr 1fr}.evidence-grid{grid-template-columns:1fr}.resource-grid{grid-template-columns:1fr}.footer-grid{flex-direction:column;align-items:flex-start}.footer-contact{text-align:left}}
 @media(max-width:480px){.wrap{width:min(100% - 24px,1160px)}.hero h1{font-size:3.1rem}.hero-card,.event-card,.quiz-shell{padding:20px}.steps-grid{grid-template-columns:1fr}.actions{flex-direction:column}.btn{width:100%}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+
+/* Frame generator reliability / usability update */
+.upload-preview-row{
+  margin:14px 0 6px;
+  display:grid;
+  grid-template-columns:64px 1fr;
+  gap:12px;
+  align-items:center;
+  border:1px solid var(--line);
+  background:var(--soft);
+  border-radius:12px;
+  padding:10px;
+}
+.upload-preview-row[hidden]{display:none}
+.upload-preview-row img{
+  width:64px;height:64px;object-fit:cover;border-radius:9px;border:1px solid #cbd8d1;background:#fff;
+}
+.upload-preview-row strong{display:block;word-break:break-word;font-size:.92rem}
+.upload-preview-row span{display:block;color:var(--muted);font-size:.82rem;margin-top:2px}
+.range-grid label>span{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.range-grid output{
+  min-width:54px;text-align:center;border-radius:999px;background:#e8f4ed;color:var(--green);
+  padding:2px 8px;font-size:.78rem;font-weight:900;
+}
+.range-grid input[type="range"]{
+  height:28px;cursor:ew-resize;accent-color:var(--green);
+}
+.reset-position{
+  width:100%;margin-top:8px;border:1px solid #cfdad4;background:#fff;color:var(--green);
+  border-radius:10px;padding:9px 12px;font-weight:850;cursor:pointer;
+}
+.reset-position:hover{background:#f1f7f3}
+.frame-preview{position:relative}
+.frame-preview:before{
+  content:"LIVE PREVIEW";display:block;color:#d5e6dc;font-size:.76rem;font-weight:900;
+  letter-spacing:.09em;margin-bottom:10px;
+}
+
+.upload-help{display:block;margin-top:6px;color:var(--muted);font-size:.82rem}
