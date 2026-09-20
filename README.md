@@ -1,26 +1,53 @@
-# JCTC Website
+# JCTC Website — Updated 2026 Campaign Build
 
-Official website starter for the Joint Case Team on Cybercrimes (JCTC).
+This is a **drop-in update for the existing GitHub Pages repository**:
 
-## Publish with GitHub Pages
+`https://shausawa.github.io/jctc-website/`
 
-1. Create a new GitHub repository, e.g. `jctc-website`.
-2. Upload all files in this folder to the repository root.
-3. Open the repository **Settings**.
-4. Go to **Pages**.
-5. Under **Build and deployment**, choose:
-   - Source: **Deploy from a branch**
-   - Branch: **main**
-   - Folder: **/(root)**
-6. Click **Save**.
-7. Wait a minute or two. GitHub will show the public Pages URL.
+It preserves the original single-page JCTC site concept but implements the September 2026 JCTC Cybercrime Awareness Campaign developer recommendations.
 
-Typical URL:
-`https://YOUR-USERNAME.github.io/jctc-website/`
+## Main changes
+- Homepage repositioned around **CYBERCRIME IS A CRIME**
+- Know the Conduct cards
+- Interactive “Is This Cybercrime?” scenarios
+- Real-life cybercrime schemes
+- Don't Fall Victim / Don't Perpetrate section
+- Day 1 and Day 2 clearly separated
+- **No registration for Day 1**
+- **Registration only for Day 2**
+- Day 2 links to the existing Google Form
+- Client-side “I’m Joining / I Will Attend / I Support” frame generator
+- Victim-response guidance
+- Evidence-preservation checklist
+- Know the Law placeholder with legal-review disclaimer
+- Campaign resources and awareness-card downloads
+- Official JCTC social handles, including YouTube
+- Mobile-first layout, keyboard focus, skip link and reduced-motion support
+- Dynamic pre-event / live-event / post-event state
+- Open Graph, X card, robots.txt and sitemap
+- Privacy-conscious analytics hooks (no external analytics is connected yet)
+- Only the supplied official JCTC logo is used; no member-agency logo is invented or regenerated
 
-## Important before official launch
+## How to update the existing GitHub repository
+1. Open the `jctc-website` repository.
+2. Upload/replace the files in the repository root with the files in this package.
+3. Keep the `assets` folder exactly as provided.
+4. Commit the change, e.g. `Implement 2026 campaign website recommendations`.
+5. GitHub Pages should redeploy automatically.
 
-- Verify every social media link.
-- Add only officially approved contact/reporting channels.
-- Prefer an approved government custom domain/subdomain for the final public deployment.
-- After the final URL is approved, generate a QR code pointing to that URL.
+## Current GitHub Pages URL
+https://shausawa.github.io/jctc-website/
+
+## Day 2 registration form
+https://docs.google.com/forms/d/e/1FAIpQLSehMK2BRo-c7ApW1UpkfYBuAHIg1azyu5XtTMMCSb_aaMPcrw/viewform
+
+## Important
+The current Google Form previously created contains Day 1 / Day 2 / Both choices. The website correctly exposes registration **only for Day 2**, but the form itself should also be simplified to Day 2 only before wide public launch.
+
+If an official custom domain is later activated, update:
+- canonical URL in `index.html`
+- Open Graph URL and image
+- `robots.txt`
+- `sitemap.xml`
+
+Do **not** add a GitHub `CNAME` file until DNS for the approved custom domain is ready.
